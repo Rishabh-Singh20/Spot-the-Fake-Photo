@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
 train.py  --  Real-photo vs Screen-recapture classifier (training)
-
-Fixes applied:
-  1. Saves full GBM + StandardScaler via joblib (model.joblib)
-     -> predict.py now uses the actual GBM, not a linear proxy
-  2. Data augmentation (brightness, contrast, zoom, colour-temp) with
-     StratifiedGroupKFold to prevent leakage between augmented versions
-     -> Expands 100 images to ~500, narrows CV variance significantly
 """
 import argparse, glob, os, joblib
 import numpy as np
@@ -24,31 +17,19 @@ from predict import _features_pil, _load_rgb, FEATURE_NAMES, N_FEATURES
 # Augmentation
 # ──────────────────────────────────────────────
 def _augment(img):
-    """
-    Return a list of augmented PIL images derived from img.
-    Each produces meaningfully different feature values:
-      - brightness down  (simulates darker room / underexposed recapture)
-      - brightness up    (simulates bright screen / overexposed)
-      - contrast boost   (simulates high-contrast monitor)
-      - blue tint        (simulates cool backlit screen colour cast)
-      - center crop 85%  (simulates zoomed-in recapture)
-    """
+
     variants = []
 
-    # Brightness: dark and bright
     variants.append(ImageEnhance.Brightness(img).enhance(0.65))
     variants.append(ImageEnhance.Brightness(img).enhance(1.45))
 
-    # Contrast boost
     variants.append(ImageEnhance.Contrast(img).enhance(1.4))
 
-    # Cool blue tint (screens emit blue-biased light)
     arr = np.asarray(img, dtype=np.float32)
-    arr[:, :, 0] = np.clip(arr[:, :, 0] * 0.88, 0, 255)  # reduce red
-    arr[:, :, 2] = np.clip(arr[:, :, 2] * 1.18, 0, 255)  # boost blue
+    arr[:, :, 0] = np.clip(arr[:, :, 0] * 0.88, 0, 255) 
+    arr[:, :, 2] = np.clip(arr[:, :, 2] * 1.18, 0, 255)  
     variants.append(Image.fromarray(arr.astype(np.uint8)))
 
-    # Center crop to 85% then resize back
     w, h   = img.size
     left   = int(w * 0.075); top = int(h * 0.075)
     right  = w - left;        bottom = h - top
@@ -78,7 +59,7 @@ def load_folder(folder, label, augment=True):
             for aug_img in imgs:
                 X.append(_features_pil(aug_img))
                 y.append(label)
-                groups.append(group_id)   # all augments of same image -> same group
+                groups.append(group_id)  
             print(f'  [{group_id+1}/{len(paths)}] {os.path.relpath(p)} '
                   f'(+{len(imgs)-1} augments)', end='\r')
         except Exception as e:
