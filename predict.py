@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """
 predict.py  --  Real-photo vs Screen-recapture classifier (inference)
-
-Loading priority:
-  1. model.joblib  (full GBM + StandardScaler -- saved by train.py)
-  2. model_weights.npz  (legacy linear proxy -- fallback only)
 """
 import sys, time, io
 import numpy as np
@@ -129,7 +125,6 @@ N_FEATURES = len(FEATURE_NAMES)  # 26
 # Master feature vector -- accepts a PIL image
 # ──────────────────────────────────────────────
 def _features_pil(img):
-    """Extract the 26-dim feature vector from an already-loaded PIL image."""
     rgb  = _np_rgb(img)
     gray = _gray(img)
 
